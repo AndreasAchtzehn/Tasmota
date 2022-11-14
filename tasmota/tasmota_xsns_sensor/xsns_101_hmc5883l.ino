@@ -49,32 +49,32 @@
 #define HMC5883L_CHIP_ID_C		0x0C
 
 /* Bit values for the STATUS register */
-#define HMC5883L_STATUS_RDY             1
-#define HMC5883L_STATUS_LOCK            2
+const uint8_t HMC5883L_STATUS_RDY             	= 1;
+const uint8_t HMC5883L_STATUS_LOCK            	= 2;
 
 /* Modes for the sampling in the MODE register */
-#define HMC5883L_MODE_CONT		0b0000000
-#define HMC5883L_MODE_SINGLE		0b0000001
-#define HMC5883L_MODE_IDLE		0b0000010
+const uint8_t HMC5883L_MODE_CONT		= 0b0000000;
+const uint8_t HMC5883L_MODE_SINGLE		= 0b0000001;
+const uint8_t HMC5883L_MODE_IDLE		= 0b0000010;
 
 /* Gain value mask for CONFIG B register */
-#define HMC5883L_CONFIG_B_GAIN_MASK	0b11100000 // shift operation, values 0-7
-#define HMC5883L_CONFIG_B_GAIN_SHIFT	5
+const uint8_t HMC5883L_CONFIG_B_GAIN_MASK	= 0b11100000; // shift operation, values 0-7
+const uint8_t HMC5883L_CONFIG_B_GAIN_SHIFT	= 5;
 
 /* Averaging value for CONFIG A register: pow(2,N) */
-#define HMC5883L_CONFIG_A_AVG_MASK	0b01100000
-#define HMC5883L_CONFIG_A_AVG_SHIFT	5
+const uint8_t HMC5883L_CONFIG_A_AVG_MASK	= 0b01100000;
+const uint8_t HMC5883L_CONFIG_A_AVG_SHIFT	= 5;
 
 /* Data output rate */
-#define HMC5883L_CONFIG_A_RATE_MASK	0b00011100
-#define HMC5883L_CONFIG_A_RATE_SHIFT	2
+const uint8_t HMC5883L_CONFIG_A_RATE_MASK	= 0b00011100;
+const uint8_t HMC5883L_CONFIG_A_RATE_SHIFT	= 2;
 
 /* Data measurement mode */
-#define HMC5883L_CONFIG_A_MMODE_NORM	0
-#define HMC5883L_CONFIG_A_MMODE_POSBIAS 1
-#define HMC5883L_CONFIG_A_MMODE_NEGBIAS 2
-#define HMC5883L_CONFIG_A_MMODE_MASK    0b00000011
-#define HMC5883L_CONFIG_A_MMODE_SHIFT	0
+const uint8_t HMC5883L_CONFIG_A_MMODE_NORM	= 0;
+const uint8_t HMC5883L_CONFIG_A_MMODE_POSBIAS 	= 1;
+const uint8_t HMC5883L_CONFIG_A_MMODE_NEGBIAS 	= 2;
+const uint8_t HMC5883L_CONFIG_A_MMODE_MASK    	= 0b00000011;
+const uint8_t HMC5883L_CONFIG_A_MMODE_SHIFT	= 0;
 
 /* Data output X register A contains the MSB from the measurement result,
 and data output X register B contains the LSB from the measurement result. The value stored in these two registers is a
@@ -98,15 +98,26 @@ struct HMC5883L_s {
 bool HMC5883L_SetConfig() {
   if ( HMC5883L == nullptr ) { return false; }
 
-  if (I2cWrite8(HMC5883L_ADDR, HMC5883L_CONFIG_A, ((HMC5883L->measurement_mode ) & HMC5883L_CONFIG_A_MMODE_MASK ) |
-                                                  ((HMC5883L->data_rate        << HMC5883L_CONFIG_A_RATE_SHIFT )  & HMC5883L_CONFIG_A_RATE_MASK ) |
-                                                  ((HMC5883L->average_mode     << HMC5883L_CONFIG_A_AVG_SHIFT )   & HMC5883L_CONFIG_A_AVG_MASK  ) ) == false) 
-											{ return false; }
-  if (I2cWrite8(HMC5883L_ADDR, HMC5883L_CONFIG_A, ((HMC5883L->gain             << HMC5883L_CONFIG_B_GAIN_SHIFT)   & HMC5883L_CONFIG_B_GAIN_MASK ) ) == false) 
-											{ return false; }
+  uint8_t cfgA = ((HMC5883L->measurement_mode << HMC5883L_CONFIG_A_MMODE_SHIFT ) & HMC5883L_CONFIG_A_MMODE_MASK ) |
+                 ((HMC5883L->data_rate        << HMC5883L_CONFIG_A_RATE_SHIFT )  & HMC5883L_CONFIG_A_RATE_MASK ) |
+                 ((HMC5883L->average_mode     << HMC5883L_CONFIG_A_AVG_SHIFT )   & HMC5883L_CONFIG_A_AVG_MASK  );
+
+  uint8_t cfgB = ((HMC5883L->gain             << HMC5883L_CONFIG_B_GAIN_SHIFT)   & HMC5883L_CONFIG_B_GAIN_MASK );
+
+  AddLog(LOG_LEVEL_INFO,"HMC5883L: CONFIG A: %#X CONFIG B: %#X MODE: %#X.",cfgA, cfgB, HMC5883L->mode);
+
+  if (I2cWrite8(HMC5883L_ADDR, HMC5883L_CONFIG_A, cfgA ) == false) { 
+	AddLog(LOG_LEVEL_INFO,"HMC5883L: Setting CONFIG A failed.");
+	return false; 
+  }
+  if (I2cWrite8(HMC5883L_ADDR, HMC5883L_CONFIG_B, cfgB ) == false) { 
+	AddLog(LOG_LEVEL_INFO,"HMC5883L: Setting CONFIG B failed.");
+	return false; 
+  }
   if (HMC5883L->mode == HMC5883L_MODE_CONT) {
   	if (I2cWrite8(HMC5883L_ADDR, HMC5883L_MODE, HMC5883L_MODE_CONT ) == false)
-            { return false; }
+            { AddLog(LOG_LEVEL_INFO,"HMC5883L: Setting continuous mode failed.");
+	      return false; }
   }
   return true;
 }
@@ -179,27 +190,28 @@ bool HMC5883L_Command() {
   subStr(cmd, XdrvMailbox.data, ",", 1);
   int8_t value = atoi(subStr(ss2, XdrvMailbox.data, ",", 2));
 
-  if (!strcmp(cmd,"GAIN")) { 
+  if (strcmp(cmd,"GAIN")) { 
     HMC5883L->gain = value;
     commandKnown = true;  
   }
-  if (!strcmp(cmd,"AVG")) { 
+  if (strcmp(cmd,"AVG")) { 
     HMC5883L->average_mode = value;  
     commandKnown = true;
   }
-  if (!strcmp(cmd,"RATE")) { 
+  if (strcmp(cmd,"RATE")) { 
     HMC5883L->data_rate = value;  
     commandKnown = true;
   }
-  if (!strcmp(cmd,"MMODE")) {                                   
+  if (strcmp(cmd,"MMODE")) {                                   
     HMC5883L->measurement_mode = value;                                       
     commandKnown = true;
   }
   
-  //snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_I2C "cmd: (%c) value: %d"), cmd, value);
-  AddLog(LOG_LEVEL_INFO,PSTR(D_LOG_I2C "cmd: (%c) value: %d"), cmd, value);
+  AddLog(LOG_LEVEL_INFO,PSTR(D_LOG_I2C "HMC5883L: cmd: (%s) value: %d cmdKnown: %d"), cmd, value,commandKnown);
 
-  if (!commandKnown) { return false; }
+  if (commandKnown == false) { return false; }
+  
+  AddLog(LOG_LEVEL_INFO,PSTR(D_LOG_I2C "HMC5883L: Reconfiguring."));
 
   return HMC5883L_SetConfig();
 }
@@ -216,7 +228,7 @@ bool Xsns101(uint32_t function) {
   }
   else if (HMC5883L != nullptr) {
     switch (function) {
-      case FUNC_COMMAND:
+      case FUNC_COMMAND_SENSOR:
         if (XSNS_101 == XdrvMailbox.index)
 	  return HMC5883L_Command();  // Return true on success
         break;
