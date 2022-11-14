@@ -49,13 +49,13 @@
 #define HMC5883L_CHIP_ID_C		0x0C
 
 /* Bit values for the STATUS register */
-const uint8_t HMC5883L_STATUS_RDY             	= 1;
-const uint8_t HMC5883L_STATUS_LOCK            	= 2;
+const uint8_t HMC5883L_STATUS_RDY             	= 0b00000001;
+const uint8_t HMC5883L_STATUS_LOCK            	= 0b00000010;
 
 /* Modes for the sampling in the MODE register */
-const uint8_t HMC5883L_MODE_CONT		= 0b0000000;
-const uint8_t HMC5883L_MODE_SINGLE		= 0b0000001;
-const uint8_t HMC5883L_MODE_IDLE		= 0b0000010;
+const uint8_t HMC5883L_MODE_CONT		= 0b00000000;
+const uint8_t HMC5883L_MODE_SINGLE		= 0b00000001;
+const uint8_t HMC5883L_MODE_IDLE		= 0b00000010;
 
 /* Gain value mask for CONFIG B register */
 const uint8_t HMC5883L_CONFIG_B_GAIN_MASK	= 0b11100000; // shift operation, values 0-7
@@ -98,13 +98,13 @@ struct HMC5883L_s {
 bool HMC5883L_SetConfig() {
   if ( HMC5883L == nullptr ) { return false; }
 
-  uint8_t cfgA = ((HMC5883L->measurement_mode << HMC5883L_CONFIG_A_MMODE_SHIFT ) & HMC5883L_CONFIG_A_MMODE_MASK ) |
-                 ((HMC5883L->data_rate        << HMC5883L_CONFIG_A_RATE_SHIFT )  & HMC5883L_CONFIG_A_RATE_MASK ) |
-                 ((HMC5883L->average_mode     << HMC5883L_CONFIG_A_AVG_SHIFT )   & HMC5883L_CONFIG_A_AVG_MASK  );
+  uint8_t cfgA = (( (HMC5883L->measurement_mode) << HMC5883L_CONFIG_A_MMODE_SHIFT ) & HMC5883L_CONFIG_A_MMODE_MASK ) |
+                 (( (HMC5883L->data_rate       ) << HMC5883L_CONFIG_A_RATE_SHIFT  ) & HMC5883L_CONFIG_A_RATE_MASK  ) |
+                 (( (HMC5883L->average_mode    ) << HMC5883L_CONFIG_A_AVG_SHIFT   ) & HMC5883L_CONFIG_A_AVG_MASK   );
 
-  uint8_t cfgB = ((HMC5883L->gain             << HMC5883L_CONFIG_B_GAIN_SHIFT)   & HMC5883L_CONFIG_B_GAIN_MASK );
+  uint8_t cfgB = (( (HMC5883L->gain            ) << HMC5883L_CONFIG_B_GAIN_SHIFT  ) & HMC5883L_CONFIG_B_GAIN_MASK  );
 
-  AddLog(LOG_LEVEL_INFO,"HMC5883L: CONFIG A: %#X CONFIG B: %#X MODE: %#X.",cfgA, cfgB, HMC5883L->mode);
+  AddLog(LOG_LEVEL_INFO,"HMC5883L: CONFIG A: %#X CONFIG B: %#X MODE: %#X",cfgA, cfgB, HMC5883L->mode);
 
   if (I2cWrite8(HMC5883L_ADDR, HMC5883L_CONFIG_A, cfgA ) == false) { 
 	AddLog(LOG_LEVEL_INFO,"HMC5883L: Setting CONFIG A failed.");
@@ -141,8 +141,6 @@ void HMC5883L_Init() {
 
 //Read the magnetic data
 void HMC5883L_ReadData(void) {
-  // check if chip is ready to provide data
-
   if (HMC5883L->mode == HMC5883L_MODE_SINGLE) {
         if (I2cWrite8(HMC5883L_ADDR, HMC5883L_MODE, HMC5883L_MODE_SINGLE ) == false)
             { return; }
@@ -207,7 +205,7 @@ bool HMC5883L_Command() {
     commandKnown = true;
   }
   
-  AddLog(LOG_LEVEL_INFO,PSTR(D_LOG_I2C "HMC5883L: cmd: (%s) value: %d cmdKnown: %d"), cmd, value,commandKnown);
+  //AddLog(LOG_LEVEL_INFO,PSTR(D_LOG_I2C "HMC5883L: cmd: (%s) value: %d cmdKnown: %d"), cmd, value,commandKnown);
 
   if (commandKnown == false) { return false; }
   
